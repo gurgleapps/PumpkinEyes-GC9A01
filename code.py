@@ -5,6 +5,7 @@ import busio
 import time
 import math
 import random
+import neopixel
 
 import config  # Import pin configuration
 
@@ -59,6 +60,12 @@ sclera_palettes = {
     "pink": 0xFFC0CB
 }
 
+if config.ENABLE_WS2812:
+    num_pixels = config.WS2812_NUM_PIXELS
+    neo_pixel_pin = getattr(board, config.WS2812_PIN)
+    pixels = neopixel.NeoPixel(neo_pixel_pin, num_pixels, brightness=0.5, auto_write=False)
+    flame_brightness = 0.1
+
 # Release any resources currently in use for the displays
 displayio.release_displays()
 
@@ -79,6 +86,40 @@ display_bus = displayio.FourWire(
 display = gc9a01.GC9A01(
     display_bus, width=240, height=240, rotation=0
 )
+
+
+def flame_effect():
+    global flame_brightness
+    flame_yellow = (255, 100, 0)
+    flame_orange = (255, 50, 0)
+    flame_red = (255, 0, 0)
+
+    # Loop the flame brightness
+    flame_brightness += 0.01
+    if flame_brightness > 1:
+        flame_brightness = 0.0
+
+    # Randomly fill each column with yellow, orange, then red
+    for col in range(8):  # Each column in the 8x8 matrix
+        # Randomize the starting positions for yellow, orange, and red
+        yellow_end = random.randint(1, 2)   # Yellow occupies 1-2 pixels
+        orange_end = yellow_end + random.randint(1, 2)  # Orange occupies next 1-2 pixels
+        red_start = orange_end  # Remaining pixels will be red
+
+        # Set the colors for the column based on the random positions
+        for row in range(8):
+            pixel_index = col + row * 8  # Calculate pixel index in the 1D NeoPixel array
+            if row < yellow_end:
+                pixels[pixel_index] = flame_yellow
+            elif row < orange_end:
+                pixels[pixel_index] = flame_orange
+            else:
+                pixels[pixel_index] = flame_red
+
+    # Update brightness
+    pixels.brightness = flame_brightness
+    pixels.show()
+
 
 # Function to randomly select a palette for the pupil and sclera
 def select_random_palette():
@@ -149,6 +190,9 @@ last_palette_change_time = time.monotonic()
 # Animate the pupil movement
 while True:
     start_time = time.monotonic()
+
+    if config.ENABLE_WS2812:
+        flame_effect()
 
     # Check if it's time to change the palette
     if time.monotonic() - last_palette_change_time > palette_change_interval:
