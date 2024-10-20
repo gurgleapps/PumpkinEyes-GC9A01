@@ -9,9 +9,6 @@ import random
 import config  # Import pin configuration
 
 pupil_radius = 40
-pupil_color = 0xFF0000
-sclera_color = 0xFFFFFF  # white
-eyelid_color = 0xF28C28  # orange
 enable_blink = False
 
 # Frame rate control
@@ -39,6 +36,29 @@ looks = {
     "down_right": (170, 175, 5)
 }
 
+# Palettes for the pupil and sclera (eye whites)
+pupil_palettes = {
+    "red": 0xFF0000,
+    "blue": 0x0000FF,
+    "green": 0x00FF00,
+    "purple": 0x800080,
+    "yellow": 0xFFFF00,
+    "orange": 0xFFA500,
+    "cyan": 0x00FFFF,
+    "pink": 0xFFC0CB
+}
+
+sclera_palettes = {
+    "white": 0xFFFFFF,
+    "light_blue": 0xADD8E6,
+    "light_yellow": 0xFFFFE0,
+    "light_gray": 0xD3D3D3,
+    "lime_green": 0x32CD32,
+    "black": 0x000000,
+    "purple": 0x800080,
+    "pink": 0xFFC0CB
+}
+
 # Release any resources currently in use for the displays
 displayio.release_displays()
 
@@ -60,35 +80,27 @@ display = gc9a01.GC9A01(
     display_bus, width=240, height=240, rotation=0
 )
 
+# Function to randomly select a palette for the pupil and sclera
+def select_random_palette():
+    pupil_color = random.choice(list(pupil_palettes.values()))
+    sclera_color = random.choice(list(sclera_palettes.values()))
+    return pupil_color, sclera_color
+
+# Initially select a random palette
+pupil_color, sclera_color = select_random_palette()
+
 # Create a palette for the pupil
 pupil_palette = displayio.Palette(2)
 pupil_palette[1] = pupil_color
 pupil_palette.make_transparent(0)
 
-
-palette = displayio.Palette(2)
-palette[0] = sclera_color  # White for the eye
-palette[1] = pupil_color   # Orange for the pupil
-
-# Fill the background with white
-background_bitmap = displayio.Bitmap(240, 240, 1)
+# Create a palette for the background (sclera)
 background_palette = displayio.Palette(1)
-background_palette[0] = sclera_color  # White background
+background_palette[0] = sclera_color  # Sclera color
 
-# Create a TileGrid for the background
+# Fill the background with sclera color
+background_bitmap = displayio.Bitmap(240, 240, 1)
 background_tilegrid = displayio.TileGrid(background_bitmap, pixel_shader=background_palette)
-
-# Create the top eyelid
-eyelid_palette = displayio.Palette(2)
-eyelid_palette[1] = eyelid_color
-top_eyelid_bitmap = displayio.Bitmap(240, 120, 1)
-top_eyelid_bitmap.fill(1)
-top_eyelid_tilegrid = displayio.TileGrid(top_eyelid_bitmap, pixel_shader=eyelid_palette)
-
-# Create the bottom eyelid
-bottom_eyelid_bitmap = displayio.Bitmap(240, 120, 1)
-bottom_eyelid_bitmap.fill(1)
-bottom_eyelid_tilegrid = displayio.TileGrid(bottom_eyelid_bitmap, pixel_shader=eyelid_palette, y=120)
 
 # Create the pupil bitmap (a smaller circle)
 pupil_bitmap = displayio.Bitmap(2 * pupil_radius, 2 * pupil_radius, 1)
@@ -104,18 +116,9 @@ pupil_tilegrid = displayio.TileGrid(pupil_bitmap, pixel_shader=pupil_palette, x=
 group = displayio.Group()
 group.append(background_tilegrid)
 group.append(pupil_tilegrid)
-if enable_blink:
-    group.append(top_eyelid_tilegrid)
-    group.append(bottom_eyelid_tilegrid)
-        # Blinking variables
-    blink_offset = 0
-    blinking = False
-    blink_direction = 1  # 1 for closing, -1 for opening
-    next_blink_time = time.monotonic() + random.uniform(5, 15)
 
 # Set the root group to display
 display.root_group = group
-
 
 # Function to move the pupil towards a target position
 def move_pupil_to_target(target_x, target_y, speed):
@@ -140,30 +143,19 @@ def move_pupil_to_target(target_x, target_y, speed):
 current_look = "center"
 last_change_time = time.monotonic()
 change_interval = 2  # Change the look every 2 seconds
+palette_change_interval = 5  # Change palette every 5 seconds
+last_palette_change_time = time.monotonic()
 
 # Animate the pupil movement
 while True:
     start_time = time.monotonic()
 
-    # Handle blinking
-    if enable_blink and time.monotonic() >= next_blink_time and not blinking:
-        blink_offset = 0
-        blink_direction = 1
-        blinking = True
-
-    if enable_blink and blinking:
-        blink_offset += blink_direction * 60
-
-        if blink_offset >= 120:  # Fully closed
-            blink_direction = -1  # Start opening
-        elif blink_offset <= 0:  # Fully open
-            blink_direction = 1  # Start closing again later
-            blinking = False
-            next_blink_time = time.monotonic() + random.uniform(2, 5)  # Randomize next blink time
-
-        top_eyelid_tilegrid.y = -120 + blink_offset
-        bottom_eyelid_tilegrid.y = 240 - blink_offset
-
+    # Check if it's time to change the palette
+    if time.monotonic() - last_palette_change_time > palette_change_interval:
+        pupil_color, sclera_color = select_random_palette()
+        pupil_palette[1] = pupil_color
+        background_palette[0] = sclera_color
+        last_palette_change_time = time.monotonic()
 
     # Check if it's time to change the look
     if time.monotonic() - last_change_time > change_interval:
@@ -173,7 +165,6 @@ while True:
 
     # Get the target position and speed for the current look
     target_x, target_y, speed = looks[current_look]
-
 
     # Move the pupil towards the target position
     move_pupil_to_target(target_x, target_y, speed)
