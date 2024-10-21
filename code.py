@@ -45,19 +45,20 @@ pupil_palettes = {
     "purple": 0x800080,
     "yellow": 0xFFFF00,
     "orange": 0xFFA500,
+    "dark_orange": 0xFF8C00,
     "cyan": 0x00FFFF,
     "pink": 0xFFC0CB
 }
 
 sclera_palettes = {
     "white": 0xFFFFFF,
-    "light_blue": 0xADD8E6,
     "light_yellow": 0xFFFFE0,
-    "light_gray": 0xD3D3D3,
+    "dark_gray": 0x808080,
     "lime_green": 0x32CD32,
     "black": 0x000000,
     "purple": 0x800080,
-    "pink": 0xFFC0CB
+    "dark_pink": 0xFF1493, # good
+    "blue": 0x0000FF
 }
 
 if config.ENABLE_WS2812:
@@ -90,7 +91,7 @@ display = gc9a01.GC9A01(
     display_bus, width=240, height=240, rotation=0
 )
 
-# heat ramp 0 to 255
+# heat ramp 0 to 255 more tinkering than anything scientific or mathematical
 def heat_ramp(heat_value):
     heat_value = max(0, min(255, heat_value))
     if heat_value > 0x40:
@@ -98,7 +99,7 @@ def heat_ramp(heat_value):
         return (255, heat_value, 0)  # Orange to yellow
     return (heat_value+16, 0, 0)  # Red
 
-
+# Flame effect did not work out but perhaps you can get it to work
 def flame_effecty():
     global flame_brightness, flame_brightness_direction, heat
     # Simulate cooling down each pixel slightly
@@ -117,7 +118,8 @@ def flame_effecty():
     #pixels.brightness = 0.2
     pixels.show()
 
-def flame_effectx(): 
+# Shows pallette of colors for heat ramp used to tweak the colors
+def flame_effect_smooth(): 
     global flame_brightness, flame_brightness_direction
     pixels.brightness = 0.2
     # Create a flame effect using a heat ramp
@@ -128,15 +130,11 @@ def flame_effectx():
 
 def flame_effect():
     global flame_brightness, flame_brightness_direction
-    flame_yellow = (255, 100, 0)
-    flame_orange = (255, 50, 0)
-    flame_red = (255, 0, 0)
 
     # Loop the flame brightness
     flame_brightness += flame_brightness_direction
     if flame_brightness >= 1.0 or flame_brightness <= 0.1:
         flame_brightness_direction *= -1
-
 
     # Randomly fill each column with yellow, orange, then red
     for col in range(8):  # Each column in the 8x8 matrix
@@ -161,12 +159,15 @@ def flame_effect():
 
 
 # Function to randomly select a palette for the pupil and sclera
+# Could do it more elegantly but handy to print out the colors and whittle down ones we like
 def select_random_palette():
-    pupil_color = random.choice(list(pupil_palettes.values()))
-    sclera_color = random.choice(list(sclera_palettes.values()))
-    if sclera_color == pupil_color:
+    pupil = random.choice(list(pupil_palettes))
+    print("Pupil color:", pupil)
+    sclera = random.choice(list(sclera_palettes))
+    print("Sclera color:", sclera)
+    if sclera == pupil:
         return select_random_palette()
-    return pupil_color, sclera_color
+    return pupil_palettes[pupil], sclera_palettes[sclera]
 
 # Initially select a random palette
 pupil_color, sclera_color = select_random_palette()
