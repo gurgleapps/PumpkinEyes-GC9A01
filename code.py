@@ -10,7 +10,7 @@ import neopixel
 import config  # Import pin configuration
 
 pupil_radius = 40
-enable_blink = False
+enable_blink = False # inefficient to do this in CircuitPython using this method
 
 # Frame rate control
 target_fps = 40  # Target frame rate (frames per second)
@@ -53,12 +53,13 @@ pupil_palettes = {
 sclera_palettes = {
     "white": 0xFFFFFF,
     "light_yellow": 0xFFFFE0,
-    "dark_gray": 0x808080,
+    "dark_gray": 0x303030,
     "lime_green": 0x32CD32,
     "black": 0x000000,
     "purple": 0x800080,
     "dark_pink": 0xFF1493, # good
-    "blue": 0x0000FF
+    "blue": 0x0000FF,
+    "red": 0xFF0000,
 }
 
 if config.ENABLE_WS2812:
@@ -83,7 +84,7 @@ display_bus = displayio.FourWire(
     command=getattr(board, config.DISPLAY_DC_PIN),
     chip_select=getattr(board, config.DISPLAY_CS_PIN),
     reset=getattr(board, config.DISPLAY_RST_PIN),
-    baudrate=40000000
+    baudrate=60000000
 )
 
 # Set up the display. GC9A01 is a 240x240 display
