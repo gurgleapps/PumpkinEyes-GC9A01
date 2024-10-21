@@ -65,6 +65,7 @@ if config.ENABLE_WS2812:
     neo_pixel_pin = getattr(board, config.WS2812_PIN)
     pixels = neopixel.NeoPixel(neo_pixel_pin, num_pixels, brightness=0.5, auto_write=False)
     flame_brightness = 0.1
+    flame_brightness_direction = 0.02
 
 # Release any resources currently in use for the displays
 displayio.release_displays()
@@ -89,21 +90,22 @@ display = gc9a01.GC9A01(
 
 
 def flame_effect():
-    global flame_brightness
+    global flame_brightness, flame_brightness_direction
     flame_yellow = (255, 100, 0)
     flame_orange = (255, 50, 0)
     flame_red = (255, 0, 0)
 
     # Loop the flame brightness
-    flame_brightness += 0.01
-    if flame_brightness > 1:
-        flame_brightness = 0.0
+    flame_brightness += flame_brightness_direction
+    if flame_brightness >= 1.0 or flame_brightness <= 0.0:
+        flame_brightness_direction *= -1
+
 
     # Randomly fill each column with yellow, orange, then red
     for col in range(8):  # Each column in the 8x8 matrix
         # Randomize the starting positions for yellow, orange, and red
-        yellow_end = random.randint(1, 2)   # Yellow occupies 1-2 pixels
-        orange_end = yellow_end + random.randint(1, 2)  # Orange occupies next 1-2 pixels
+        yellow_end = random.randint(1, 2)   # Yellow occupies 1-3 pixels
+        orange_end = yellow_end + random.randint(1, 3)  # Orange occupies next 1-3 pixels
         red_start = orange_end  # Remaining pixels will be red
 
         # Set the colors for the column based on the random positions
