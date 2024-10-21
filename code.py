@@ -66,6 +66,8 @@ if config.ENABLE_WS2812:
     pixels = neopixel.NeoPixel(neo_pixel_pin, num_pixels, brightness=0.5, auto_write=False)
     flame_brightness = 0.1
     flame_brightness_direction = 0.02
+    # Array to store heat values for each pixel
+    heat = [0] * num_pixels
 
 # Release any resources currently in use for the displays
 displayio.release_displays()
@@ -88,6 +90,41 @@ display = gc9a01.GC9A01(
     display_bus, width=240, height=240, rotation=0
 )
 
+# heat ramp 0 to 255
+def heat_ramp(heat_value):
+    heat_value = max(0, min(255, heat_value))
+    if heat_value > 0x40:
+        heat_value -= 0x40
+        return (255, heat_value, 0)  # Orange to yellow
+    return (heat_value+16, 0, 0)  # Red
+
+
+def flame_effecty():
+    global flame_brightness, flame_brightness_direction, heat
+    # Simulate cooling down each pixel slightly
+    for i in range(num_pixels):
+        heat[i] = max(0, heat[i] - random.randint(0, 20))
+    # Heat up pixels from the bottom (simulate flames rising)
+    for i in range(num_pixels - 1, 2, -1):
+        heat[i] = (heat[i - 1] + heat[i - 2] + heat[i - 2]) // 3
+    # Randomly ignite new heat near the bottom
+    for i in range(2):
+        heat[i] = min(255, heat[i] + random.randint(160, 255))
+    # Convert heat values to colors and apply to pixels
+    for i in range(num_pixels):
+        pixels[i] = heat_ramp(heat[i])
+    # Apply brightness and update the display
+    #pixels.brightness = 0.2
+    pixels.show()
+
+def flame_effectx(): 
+    global flame_brightness, flame_brightness_direction
+    pixels.brightness = 0.2
+    # Create a flame effect using a heat ramp
+    step = 255 / num_pixels
+    for i in range(0, num_pixels):
+        pixels[i] = heat_ramp(i*step)
+    pixels.show()
 
 def flame_effect():
     global flame_brightness, flame_brightness_direction
@@ -97,7 +134,7 @@ def flame_effect():
 
     # Loop the flame brightness
     flame_brightness += flame_brightness_direction
-    if flame_brightness >= 1.0 or flame_brightness <= 0.0:
+    if flame_brightness >= 1.0 or flame_brightness <= 0.1:
         flame_brightness_direction *= -1
 
 
@@ -112,11 +149,11 @@ def flame_effect():
         for row in range(8):
             pixel_index = col + row * 8  # Calculate pixel index in the 1D NeoPixel array
             if row < yellow_end:
-                pixels[pixel_index] = flame_yellow
+                pixels[pixel_index] = heat_ramp(random.randint(120,150)) # random yellow
             elif row < orange_end:
-                pixels[pixel_index] = flame_orange
+                pixels[pixel_index] = heat_ramp(random.randint(85,120)) # random orange
             else:
-                pixels[pixel_index] = flame_red
+                pixels[pixel_index] = heat_ramp(random.randint(0,85)) # random red
 
     # Update brightness
     pixels.brightness = flame_brightness
@@ -127,6 +164,8 @@ def flame_effect():
 def select_random_palette():
     pupil_color = random.choice(list(pupil_palettes.values()))
     sclera_color = random.choice(list(sclera_palettes.values()))
+    if sclera_color == pupil_color:
+        return select_random_palette()
     return pupil_color, sclera_color
 
 # Initially select a random palette
@@ -186,7 +225,7 @@ def move_pupil_to_target(target_x, target_y, speed):
 current_look = "center"
 last_change_time = time.monotonic()
 change_interval = 2  # Change the look every 2 seconds
-palette_change_interval = 5  # Change palette every 5 seconds
+palette_change_interval = 10  # Change palette every x seconds
 last_palette_change_time = time.monotonic()
 
 # Animate the pupil movement
